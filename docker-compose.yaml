@@ -124,7 +124,13 @@ services:
   # -------------------------- CRM (Rails) -----------------------------------
   crm:
     image: evoapicloud/evo-ai-crm-community:latest
-    command: sh -c "until wget -qO- http://auth:3001/health >/dev/null 2>&1; do echo 'Waiting for auth...'; sleep 5; done; bundle exec rails db:migrate 2>&1 || echo 'Migration had errors, continuing...'; bundle exec rails s -p 3000 -b 0.0.0.0"
+    # boot_patches: corrige webhook 400 (data vazio) e casing do QR (Qrcode vs qrcode)
+    # direto no boot — sobrevive a redeploys pois o script vem do repo (./patches)
+    command: sh -c "ruby /patches/crm_boot_patches.rb 2>/dev/null || true; until wget -qO- http://auth:3001/health >/dev/null 2>&1; do echo 'Waiting for auth...'; sleep 5; done; bundle exec rails db:migrate 2>&1 || echo 'Migration had errors, continuing...'; bundle exec rails s -p 3000 -b 0.0.0.0"
+    volumes:
+      # mídias do ActiveStorage compartilhadas entre crm e crm_sidekiq (e persistentes)
+      - evocrm_storage:/app/storage
+      - ./patches/crm_boot_patches.rb:/patches/crm_boot_patches.rb:ro
     environment:
       - RAILS_ENV=production
       - RAILS_SERVE_STATIC_FILES=true
@@ -160,6 +166,8 @@ services:
   crm_sidekiq:
     image: evoapicloud/evo-ai-crm-community:latest
     command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    volumes:
+      - evocrm_storage:/app/storage
     environment:
       - RAILS_ENV=production
       - SECRET_KEY_BASE=${SERVICE_BASE64_64_SECRETKEYBASE}
@@ -283,3 +291,4 @@ volumes:
   evocrm_postgres:
   evocrm_redis:
   evocrm_processor_logs:
+  evocrm_storage:
