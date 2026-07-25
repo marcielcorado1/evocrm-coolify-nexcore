@@ -130,7 +130,7 @@ services:
     volumes:
       # mídias do ActiveStorage compartilhadas entre crm e crm_sidekiq (e persistentes)
       - evocrm_storage:/app/storage
-      - ./patches/crm_boot_patches.rb:/patches/crm_boot_patches.rb:ro
+      - ./patches:/patches:ro
     environment:
       - RAILS_ENV=production
       - RAILS_SERVE_STATIC_FILES=true
